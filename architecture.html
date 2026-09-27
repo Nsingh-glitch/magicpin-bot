@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>magicpin Vera Bot — Architecture</title>
+  <style>
+    :root { --bg:#0b1120; --surface:#131c31; --line:#334155; --text:#e5eefc; --muted:#a8b6cc; --accent:#fb923c; --blue:#60a5fa; --green:#34d399; --pink:#f472b6; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:linear-gradient(135deg,#090f1c,#111b31); color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { max-width:1120px; margin:auto; padding:48px 24px 64px; }
+    h1 { margin:0; font-size:clamp(2rem,5vw,3.4rem); letter-spacing:-.04em; }
+    h2 { margin:0 0 12px; font-size:1.1rem; } p { color:var(--muted); margin:0; }
+    .eyebrow { color:var(--accent); font-weight:700; letter-spacing:.13em; text-transform:uppercase; font-size:.72rem; }
+    .intro { max-width:730px; margin-top:12px; font-size:1.05rem; }
+    .flow { display:grid; grid-template-columns:1fr 42px 1.35fr 42px 1fr; align-items:center; margin:44px 0; }
+    .arrow { color:var(--muted); text-align:center; font-size:1.8rem; }
+    .card { background:rgba(19,28,49,.9); border:1px solid var(--line); border-radius:16px; padding:20px; min-height:150px; box-shadow:0 16px 40px rgba(0,0,0,.18); }
+    .card strong { display:block; margin-bottom:8px; } .orange { border-color:#9a4d20; } .blue { border-color:#285c98; } .green { border-color:#18765a; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:16px 0 36px; }
+    .endpoint { border-left:4px solid var(--blue); } .endpoint.context { border-color:var(--green); } .endpoint.tick { border-color:var(--accent); } .endpoint.reply { border-color:var(--pink); }
+    code { color:#bfdbfe; font: .85em ui-monospace,SFMono-Regular,Consolas,monospace; } ul { margin:8px 0 0; padding-left:18px; color:var(--muted); } li { margin:5px 0; }
+    .wide { margin-top:16px; } .pill { display:inline-block; margin:5px 4px 0 0; padding:3px 8px; border-radius:99px; background:#1e293b; color:#cbd5e1; font-size:.75rem; }
+    .note { padding:16px 18px; background:#1c2437; border-left:4px solid var(--accent); border-radius:8px; color:var(--muted); }
+    footer { margin-top:40px; color:#71809b; font-size:.85rem; }
+    @media (max-width:760px) { .flow { grid-template-columns:1fr; gap:10px; } .arrow { transform:rotate(90deg); } .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Deployment architecture</div>
+    <h1>magicpin Vera Bot</h1>
+    <p class="intro">A deterministic Spring Boot API with optional, bounded Gemini message enrichment. The decision and every factual claim remain grounded in supplied context.</p>
+
+    <section class="flow" aria-label="Runtime flow">
+      <div class="card orange"><strong>Evaluator / client</strong><p>HTTP + JSON requests. A deployment platform routes health probes to <code>/v1/healthz</code>.</p></div>
+      <div class="arrow">→</div>
+      <div class="card blue"><strong>Spring Boot 3 · Java 17</strong><p>Runs on <code>PORT</code> (default <code>8080</code>), supports graceful shutdown, and returns controlled 400/415 errors for invalid requests.</p><span class="pill">single container</span><span class="pill">non-root runtime</span></div>
+      <div class="arrow">→</div>
+      <div class="card green"><strong>InMemoryStore</strong><p>Collision-safe context keys, latest decisions, and per-conversation state. Designed for one evaluator instance.</p></div>
+    </section>
+
+    <div class="note"><strong>Replica boundary:</strong> context and conversations are intentionally in memory. They reset on restart and are not shared across replicas; use one replica for challenge evaluation.</div>
+
+    <section class="wide">
+      <div class="eyebrow">HTTP surface</div>
+      <div class="grid">
+        <article class="card endpoint"><h2><code>GET /v1/healthz</code></h2><p>Returns liveness, uptime, and loaded-context count. Use for platform health checks.</p></article>
+        <article class="card endpoint"><h2><code>GET /v1/metadata</code></h2><p>Returns bot identity, version, model strategy, and deterministic approach.</p></article>
+        <article class="card endpoint context"><h2><code>POST /v1/context</code></h2><p>Validates non-empty <code>scope</code> and <code>context_id</code>, then replaces that exact context.</p></article>
+        <article class="card endpoint tick"><h2><code>POST /v1/tick</code></h2><p>Accepts <code>available_triggers</code> or <code>active_trigger_ids</code>, scores per merchant, then returns Vera actions.</p></article>
+        <article class="card endpoint reply"><h2><code>POST /v1/reply</code></h2><p>Processes STOP, auto-replies, role flows, and terminal states with per-conversation synchronization.</p></article>
+        <article class="card endpoint"><h2>Action contract</h2><p>Actions include grounded <code>merchant_id</code>, rationale, CTA, <code>send_as: vera</code>, and a stable suppression key.</p></article>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card"><h2>Decision path</h2><ul><li>Context is loaded by exact scope + ID.</li><li>Merchant-specific triggers cannot leak across merchants.</li><li>Deterministic category messaging is generated first.</li><li>Selection never records execution.</li></ul></article>
+      <article class="card"><h2>Optional Gemini path</h2><ul><li>Disabled unless <code>GEMINI_ENABLED=true</code>.</li><li>API key arrives only through environment/secret injection.</li><li>8-second bounded timeout by default.</li><li>Malformed or ungrounded output falls back safely.</li></ul></article>
+      <article class="card"><h2>Container runtime</h2><ul><li>Multi-stage Maven build runs tests.</li><li>JRE-only non-root final image.</li><li><code>PORT</code> and Gemini settings are runtime environment variables.</li><li>Use <code>/v1/healthz</code> for readiness/liveness probes.</li></ul></article>
+    </section>
+
+    <footer>magicpin Vera Bot · Spring Boot 3.2.5 · Java 17 · in-memory evaluator deployment</footer>
+  </main>
+</body>
+</html>
