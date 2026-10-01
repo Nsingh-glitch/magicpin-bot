@@ -16,6 +16,12 @@ and handles merchant/customer conversation turns.
 
 See [architecture.html](architecture.html) for the runtime diagram.
 
+## QA Dashboard
+
+![Magicpin Bot Production QA & Regression Report](QA_DASHBOARD.png)
+
+Open the [interactive QA dashboard](QA_DASHBOARD.html) for the full-size report.
+
 ## API
 
 | Endpoint | Success | Purpose |

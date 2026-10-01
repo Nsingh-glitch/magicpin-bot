@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MAGICPIN BOT - Production QA & Regression Report</title>
+  <style>
+    :root {
+      --ink: #10233f;
+      --muted: #617089;
+      --line: #dce4ed;
+      --paper: #f7f9fc;
+      --white: #ffffff;
+      --teal: #087f73;
+      --teal-soft: #e6f5f1;
+      --amber: #a86408;
+      --amber-soft: #fff4df;
+      --red: #ad3a35;
+      --red-soft: #fbe9e8;
+      --blue-soft: #edf3fb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 960px;
+      background: #e9eef4;
+      color: var(--ink);
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+    }
+
+    .sheet {
+      width: min(1440px, 100vw);
+      height: 810px;
+      min-height: 0;
+      aspect-ratio: 16 / 9;
+      margin: 0 auto;
+      padding: 34px 56px 24px;
+      background:
+        linear-gradient(90deg, rgba(226, 235, 244, .42) 1px, transparent 1px) 0 0 / 44px 44px,
+        var(--paper);
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 16px;
+      overflow: hidden;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 32px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 18px;
+    }
+
+    .kicker, .label {
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 7px 0 4px;
+      font-size: 40px;
+      line-height: 1;
+      letter-spacing: -.04em;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: right;
+    }
+
+    .meta strong { color: var(--ink); font-weight: 700; }
+    a { color: var(--teal); text-decoration: none; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1.15fr 1.15fr .65fr .95fr .95fr;
+      gap: 12px;
+    }
+
+    .metric {
+      min-height: 108px;
+      padding: 14px 18px 12px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--ink);
+      border-radius: 7px;
+      box-shadow: 0 5px 16px rgba(16, 35, 63, .045);
+    }
+
+    .metric.pass { border-top-color: var(--teal); }
+    .metric.fail { border-top-color: var(--red); }
+    .metric.probe { border-top-color: var(--amber); }
+
+    .metric-value {
+      margin: 6px 0 2px;
+      color: var(--ink);
+      font-size: 40px;
+      line-height: 1;
+      font-weight: 850;
+      letter-spacing: -.045em;
+      white-space: nowrap;
+    }
+
+    .metric.pass .metric-value { color: var(--teal); }
+    .metric.fail .metric-value { color: var(--red); }
+    .metric.probe .metric-value { color: var(--amber); }
+
+    .metric-name {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .content {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1.16fr .84fr;
+      gap: 20px;
+    }
+
+    .panel {
+      min-height: 0;
+      padding: 16px 21px;
+      background: rgba(255, 255, 255, .83);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 13px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.1;
+      letter-spacing: -.015em;
+    }
+
+    .panel-note {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .coverage {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 28px;
+      row-gap: 9px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .coverage li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .coverage li::before {
+      content: "✓";
+      display: inline-grid;
+      flex: 0 0 19px;
+      width: 19px;
+      height: 19px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--teal-soft);
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .findings {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .finding {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 7px;
+      color: var(--ink);
+      font-size: 12.5px;
+      line-height: 1.35;
+    }
+
+    .finding-number {
+      color: var(--teal);
+      font-weight: 850;
+    }
+
+    .finding.issue {
+      display: block;
+      margin-top: 2px;
+      padding: 8px 10px;
+      border-left: 3px solid var(--amber);
+      background: var(--amber-soft);
+      font-size: 12px;
+    }
+
+    .finding.issue strong { color: var(--ink); }
+
+    .lower {
+      display: grid;
+      grid-template-columns: .92fr 1.08fr;
+      gap: 20px;
+      margin-top: 12px;
+    }
+
+    .stack { display: grid; gap: 7px; }
+    .tech-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tech-item::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      flex: 0 0 6px;
+      border-radius: 50%;
+      background: var(--teal);
+    }
+
+    .issue-counts {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      margin-top: 1px;
+    }
+
+    .issue-count {
+      padding: 9px 9px 8px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: var(--white);
+    }
+
+    .issue-count b { display: block; font-size: 22px; line-height: 1; }
+    .issue-count span { color: var(--muted); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+    .issue-count.high b { color: var(--red); }
+    .issue-count.medium b { color: var(--amber); }
+    .issue-count.zero b { color: var(--teal); }
+
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding-top: 13px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .footer-brand { color: var(--ink); }
+    .footer-tag { color: var(--teal); }
+
+    @media (max-width: 1100px) {
+      body { min-width: 0; }
+      .sheet { width: 100%; height: auto; min-height: 100vh; aspect-ratio: auto; padding: 28px; }
+      .metrics { grid-template-columns: repeat(3, 1fr); }
+      .content { grid-template-columns: 1fr; }
+      .header { flex-direction: column; }
+      .meta { align-items: flex-start; text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <header class="header">
+      <div>
+        <div class="kicker">MAGICPIN BOT</div>
+        <h1>Production QA &amp; Regression Report</h1>
+        <p class="subtitle">Evidence-led API, decisioning, safety and regression assessment</p>
+      </div>
+      <div class="meta">
+        <div><strong>Environment</strong> Production</div>
+        <div><strong>Production</strong> <a href="https://magicpin-bot-76xf.onrender.com/">https://magicpin-bot-76xf.onrender.com/</a></div>
+        <div><strong>GitHub</strong> <a href="https://github.com/Nsingh-glitch/magicpin-bot">https://github.com/Nsingh-glitch/magicpin-bot</a></div>
+        <div>Executed 2026-10-02</div>
+      </div>
+    </header>
+
+    <section class="metrics" aria-label="Headline QA metrics">
+      <article class="metric">
+        <div class="label">Evidence</div>
+        <div class="metric-value">131</div>
+        <div class="metric-name">Total Evidence Items</div>
+      </article>
+      <article class="metric pass">
+        <div class="label">Result</div>
+        <div class="metric-value">129</div>
+        <div class="metric-name">Passed</div>
+      </article>
+      <article class="metric fail">
+        <div class="label">Result</div>
+        <div class="metric-value">2</div>
+        <div class="metric-name">Failed</div>
+      </article>
+      <article class="metric pass">
+        <div class="label">Regression</div>
+        <div class="metric-value">66/66</div>
+        <div class="metric-name">Automated Tests Passed</div>
+      </article>
+      <article class="metric probe">
+        <div class="label">Production</div>
+        <div class="metric-value">63/65</div>
+        <div class="metric-name">Production Probes Passed</div>
+      </article>
+    </section>
+
+    <section class="content">
+      <div>
+        <article class="panel">
+          <div class="panel-heading">
+            <h2>Testing Coverage</h2>
+            <span class="panel-note">11 areas assessed</span>
+          </div>
+          <ul class="coverage">
+            <li>API Reliability</li>
+            <li>Input Validation</li>
+            <li>Conversation Flow</li>
+            <li>State Management</li>
+            <li>STOP / Opt-out</li>
+            <li>Deterministic Decision Layer</li>
+            <li>Tick / Trigger Flow</li>
+            <li>Knowledge Retrieval</li>
+            <li>AI Response Safety</li>
+            <li>Error Handling</li>
+            <li>Regression Testing</li>
+          </ul>
+        </article>
+
+        <div class="lower">
+          <article class="panel">
+            <div class="panel-heading"><h2>Tech Stack</h2></div>
+            <div class="stack">
+              <div class="tech-item">Spring Boot 3.2.5</div>
+              <div class="tech-item">Java 17</div>
+              <div class="tech-item">REST API</div>
+              <div class="tech-item">Deterministic Decision Engine</div>
+              <div class="tech-item">Knowledge Retrieval</div>
+              <div class="tech-item">Optional Gemini Enrichment</div>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-heading"><h2>Issues</h2><span class="panel-note">Confirmed findings</span></div>
+            <div class="issue-counts">
+              <div class="issue-count zero"><b>0</b><span>Critical</span></div>
+              <div class="issue-count high"><b>1</b><span>High</span></div>
+              <div class="issue-count medium"><b>1</b><span>Medium</span></div>
+              <div class="issue-count zero"><b>0</b><span>Low</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <h2>Key Findings</h2>
+          <span class="panel-note">Observed and documented</span>
+        </div>
+        <ol class="findings">
+          <li class="finding"><span class="finding-number">01</span><span>66/66 repository regression tests passed with 0 skipped.</span></li>
+          <li class="finding"><span class="finding-number">02</span><span>Production API probes successfully covered validation, conversation, state, decision, grounding, safety and error-handling behavior.</span></li>
+          <li class="finding"><span class="finding-number">03</span><span>Two actionable issues were identified:</span></li>
+          <li class="finding issue"><strong>Natural-language opt-out wording is not fully recognized.</strong></li>
+          <li class="finding issue"><strong>Malformed structured context payloads are accepted instead of rejected.</strong></li>
+        </ol>
+      </article>
+    </section>
+
+    <footer>
+      <span class="footer-brand">MAGICPIN BOT</span>
+      <span class="footer-tag">Production QA • Regression Testing • Deterministic AI Decisioning</span>
+    </footer>
+  </main>
+</body>
+</html>
